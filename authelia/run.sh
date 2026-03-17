@@ -45,7 +45,7 @@ storage:
 session:
   cookies:
     - domain: "$DOMAIN"
-      authelia_url: "http://auth.$DOMAIN" # [關鍵修正] v4.38+ 必填欄位
+      authelia_url: "https://auth.$DOMAIN" # [關鍵修正] v4.38+ 必填欄位
       name: authelia_session
       expiration: 3600
       inactivity: 300
