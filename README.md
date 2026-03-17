@@ -33,7 +33,8 @@ Authelia uses a file-based user database. Follow these steps to set up your firs
 
 Do not use plaintext passwords. Run the following command in your Home Assistant Terminal & SSH to generate a secure Argon2id hash:
 ```
-docker exec -it addon_13365e00_authelia_sso /app/authelia crypto hash generate argon2 --password "YOUR_CHOSEN_PASSWORD"```
+docker exec -it addon_13365e00_authelia_sso /app/authelia crypto hash generate argon2 --password "YOUR_CHOSEN_PASSWORD"
+```
 
 Copy the resulting string (starting with $argon2id$) and paste it into the password: field in your users_database.yml
 
@@ -47,6 +48,7 @@ users:
     email: admin@raphaelchen.org
     groups:
       - admins
+```
 
 ## First Login & Two-Factor Authentication (2FA)
 
