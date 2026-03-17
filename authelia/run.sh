@@ -26,9 +26,15 @@ if [ ! -d "$CONFIG_DIR" ]; then
     mkdir -p "$CONFIG_DIR"
 fi
 
-# 4. 建立符合新版格式的基礎配置範本
+# 4. 自動偵測並汰換舊版設定檔
+if grep -q "host: 0.0.0.0" "$CONFIG_FILE" 2>/dev/null; then
+    echo "[Warning] Old configuration format detected! Backing up to configuration.yml.bak..."
+    mv "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+fi
+
+# 5. 建立符合 v4.38 新版格式的基礎配置範本
 if [ ! -f "$CONFIG_FILE" ]; then
-    echo "[Info] No configuration.yml found. Creating a default template..."
+    echo "[Info] No configuration.yml found. Creating a v4.38+ compatible template..."
     cat <<EOF > "$CONFIG_FILE"
 theme: auto
 server:
@@ -40,9 +46,10 @@ storage:
   local:
     path: /config/authelia/db.sqlite3
 session:
-  name: authelia_session
-  expiration: 3600
-  inactivity: 300
+  cookies:
+    - name: authelia_session
+      expiration: 3600
+      inactivity: 300
 authentication_backend:
   file:
     path: /config/authelia/users_database.yml
