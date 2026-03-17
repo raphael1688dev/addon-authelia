@@ -1,8 +1,8 @@
-# 階段一：從官方映像檔提取 Authelia
-FROM ghcr.io/authelia/authelia:latest AS authelia-core
+# 階段一：從官方映像檔提取 Authelia (明確指定 4.38.0 版本)
+FROM ghcr.io/authelia/authelia:4.38.0 AS authelia-core
 
-# 階段二：改用原生的 Debian 作為底層，徹底解決 glibc 相容性問題！
-FROM debian:bookworm-slim
+# 階段二：改用原生的 Debian 12 (Bookworm) 作為底層
+FROM debian:12-slim
 
 USER root
 
