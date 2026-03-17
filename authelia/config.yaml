@@ -1,6 +1,6 @@
 name: "Authelia SSO"
 description: "The Single Sign-On Multi-Factor portal for web apps."
-version: "1.0.10"
+version: "1.0.11"
 slug: "authelia_sso"
 init: false
 arch:
