@@ -1,15 +1,15 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
-
-# 階段一：提取 Authelia
+# 階段一：從官方映像檔提取 Authelia
 FROM ghcr.io/authelia/authelia:latest AS authelia-core
 
-# 階段二：使用 HA 的基礎映像檔
-FROM ${BUILD_FROM}
+# 階段二：改用原生的 Debian 作為底層，徹底解決 glibc 相容性問題！
+FROM debian:bookworm-slim
 
 USER root
 
-# 補上 bash, jq，以及 Authelia 執行必需的 C 函式庫相容套件與憑證
-RUN apk add --no-cache bash jq libc6-compat gcompat ca-certificates tzdata
+# 更新套件庫並使用 apt-get 安裝 bash 與 jq
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends bash jq ca-certificates tzdata && \
+    rm -rf /var/lib/apt/lists/*
 
 # 複製執行檔與腳本
 COPY --from=authelia-core /app/authelia /app/authelia
