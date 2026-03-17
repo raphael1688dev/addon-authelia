@@ -14,31 +14,25 @@ JWT_SECRET=$(jq --raw-output '.jwt_secret' $OPTIONS_PATH)
 SESSION_SECRET=$(jq --raw-output '.session_secret' $OPTIONS_PATH)
 ENCRYPTION_KEY=$(jq --raw-output '.encryption_key' $OPTIONS_PATH)
 
-# 2. 轉換為 Authelia v4.38+ 支援的全域環境變數
+# 2. 轉換為 Authelia 支援的「非陣列型」環境變數 (這些通常沒問題)
 export AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET="$JWT_SECRET"
 export AUTHELIA_SESSION_SECRET="$SESSION_SECRET"
 export AUTHELIA_STORAGE_ENCRYPTION_KEY="$ENCRYPTION_KEY"
 
-# 關鍵修正：針對多網域 Cookie 設定，必須指名 domain 屬性
-export AUTHELIA_SESSION_COOKIES_0_DOMAIN="$DOMAIN"
-export AUTHELIA_SESSION_COOKIES_0_AUTHTYPE="cookie"
-
 # 3. 檢查並建立持久化目錄
 if [ ! -d "$CONFIG_DIR" ]; then
-    echo "[Info] Creating Authelia config directory at $CONFIG_DIR"
     mkdir -p "$CONFIG_DIR"
 fi
 
-# 4. 強制汰換舊格式 (包含沒寫清楚 cookies domain 的版本)
-if grep -q "host: 0.0.0.0" "$CONFIG_FILE" 2>/dev/null || ! grep -q "domain:" "$CONFIG_FILE" 2>/dev/null; then
-    echo "[Warning] Updating configuration template to v4.38+ multi-domain format..."
-    mv "$CONFIG_FILE" "${CONFIG_FILE}.bak" || true
+# 4. 強制汰換舊格式 (只要檔案存在就先備份，確保每次重建都用最新的 $DOMAIN)
+if [ -f "$CONFIG_FILE" ]; then
+    echo "[Info] Refreshing configuration.yml to ensure domain $DOMAIN is applied..."
+    mv "$CONFIG_FILE" "${CONFIG_FILE}.bak"
 fi
 
-# 5. 建立符合 v4.38 新版格式的基礎配置範本
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "[Info] No configuration.yml found. Creating a v4.38+ compatible template..."
-    cat <<EOF > "$CONFIG_FILE"
+# 5. 建立符合 v4.38 新版格式的基礎配置
+echo "[Info] Creating a fresh v4.38+ compatible template..."
+cat <<EOF > "$CONFIG_FILE"
 theme: auto
 server:
   address: "tcp://0.0.0.0:9091/"
@@ -50,7 +44,7 @@ storage:
     path: /config/authelia/db.sqlite3
 session:
   cookies:
-    - domain: "$DOMAIN"  # 這裡直接寫入，避免環境變數掛載失敗
+    - domain: "$DOMAIN"
       name: authelia_session
       expiration: 3600
       inactivity: 300
@@ -66,8 +60,6 @@ notifier:
   filesystem:
     filename: /config/authelia/notification.txt
 EOF
-    echo "[Info] Default configuration.yml created."
-fi
 
 echo "[Info] Starting Authelia daemon..."
 exec /app/authelia --config "$CONFIG_FILE"
