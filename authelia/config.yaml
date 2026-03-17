@@ -1,6 +1,6 @@
 name: "Authelia SSO"
 description: "The Single Sign-On Multi-Factor portal for web apps."
-version: "1.0.11"
+version: "1.0.12"
 slug: "authelia_sso"
 init: false
 arch:
@@ -13,10 +13,12 @@ ports:
 ports_description:
   9091/tcp: "Authelia Web UI and API"
 options:
-  domain: "your-domain.com"
+  domain: "raphaelchen.org"
   jwt_secret: "請在此輸入隨機的JWT字串"
   session_secret: "請在此輸入隨機的Session字串"
+  encryption_key: "請在此輸入用於資料庫加密的隨機字串"
 schema:
   domain: "str"
   jwt_secret: "password"
   session_secret: "password"
+  encryption_key: "password"
