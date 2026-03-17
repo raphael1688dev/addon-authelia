@@ -1,37 +1,39 @@
 # Home Assistant Add-on: Authelia SSO
 
-This Add-on brings [Authelia](https://www.authelia.com/), an open-source authentication and authorization server, directly into your Home Assistant environment. It provides Two-Factor Authentication (TOTP) and Single Sign-On (SSO) for your reverse-proxied applications.
+This add-on brings [Authelia](https://www.authelia.com/), an open-source authentication and authorization server, to Home Assistant. It provides Two-Factor Authentication (TOTP) and Single Sign-On (SSO) for your applications behind a reverse proxy.
 
 ## Installation
 
 1. Navigate to your Home Assistant instance.
 2. Go to **Settings** > **Add-ons** > **Add-on Store**.
 3. Click the three dots (top right) and select **Repositories**.
-4. Add the URL of this GitHub repository.
-5. Reload the page, find **Authelia SSO**, and click **Install**.
+4. Add your GitHub repository URL: `https://github.com/raphael1688dev/addon-authelia`.
+5. After the store reloads, find **Authelia SSO** and click **Install**.
 
 ## Configuration
 
-Before starting the Add-on, go to the **Configuration** tab and set the following parameters:
+Before starting the add-on, you **must** configure the following parameters in the **Configuration** tab:
 
-* **`domain`**: The root domain of your applications (e.g., `your-domain.com`).
+* **`domain`**: Your root domain (e.g., `raphaelchen.org`).
 * **`jwt_secret`**: A long, random string used for identity verification.
 * **`session_secret`**: A long, random string used to encrypt session data.
+* **`encryption_key`**: A long, random string used for database encryption (Required).
 
-*Note: These GUI settings will automatically override the respective values in your `configuration.yml` via environment variables.*
+> **⚠️ Important Note (v4.38+ Changes)**: 
+> Per Authelia v4.38.0 specifications, this add-on automatically configures the portal URL as `https://auth.YOUR_DOMAIN`. Ensure your DNS and Reverse Proxy (NGINX) are configured to point this subdomain to your instance.
 
-## Persistent Storage & Users
+## Persistent Storage & User Management
 
-Upon the first start, the Add-on creates a default configuration folder at `/config/authelia/` in your Home Assistant directory. 
+On the first successful start, the add-on creates a configuration folder at `/config/authelia/` in your Home Assistant directory.
 
-You will need to manually create the `users_database.yml` file in that directory to define your users and passwords. You can generate a password hash using Authelia's built-in hashing tool or standard argon2 generators.
-
-Example `/config/authelia/users_database.yml`:
+### Defining Users
+You must manually create the file `/config/authelia/users_database.yml` to define your accounts. 
+Example:
 ```yaml
 users:
-  admin:
-    displayname: "Administrator"
-    password: "$argon2id$v=19$m=65536,t=3,p=4$..."
-    email: admin@your-domain.com
+  usera:
+    displayname: "usera"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$..." # Use an argon2 hasher
+    email: usera@example.com
     groups:
       - admins
