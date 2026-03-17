@@ -63,3 +63,132 @@ When you log in for the first time, Authelia will require you to register a 2FA 
 4. Open the file named **`notification.txt`**.
 5. Inside this file, you will find the simulated email containing your **6-digit One-Time Code** or a direct registration link.
 6. Enter the code in your browser, or open the link in a new tab to scan the QR code with your authenticator app (e.g., Google Authenticator, Authy).
+
+## Advanced: Dual-Tenant Architecture (Internal vs. External Network Separation)
+
+If you are hosting both external services (e.g., `xc.raphaelchen.org`) and internal services (e.g., `local.raphaelchen.org`), routing internal traffic to an external auth portal is a security risk. Authelia's Multi-Domain capabilities allow you to split these into completely isolated authentication zones.
+
+### 1. Authelia Configuration (`configuration.yml`)
+You must define separate cookies and access control policies for both environments in your `/config/authelia/configuration.yml`:
+
+```yaml
+session:
+  cookies:
+    # External Network (Covers raphaelchen.org and xc.raphaelchen.org)
+    - domain: "raphaelchen.org"
+      authelia_url: "[https://auth.raphaelchen.org](https://auth.raphaelchen.org)"
+      name: authelia_session_ext
+      expiration: 3600
+      inactivity: 300
+
+    # Internal Network (Strictly for local.raphaelchen.org)
+    - domain: "local.raphaelchen.org"
+      authelia_url: "[https://auth.local.raphaelchen.org](https://auth.local.raphaelchen.org)"
+      name: authelia_session_int
+      expiration: 3600
+      inactivity: 300
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: "*.raphaelchen.org"
+      policy: two_factor
+    - domain: "*.local.raphaelchen.org"
+      policy: two_factor
+```
+
+### 2. NGINX Integration
+
+You will need to configure separate Auth Portals and Service Blocks for both the External and Internal tenants.
+
+#### A. External Tenant Configuration
+
+**1. External Auth Portal (`auth.raphaelchen.org`):**
+```nginx
+server {
+    listen 443 ssl;
+    server_name auth.raphaelchen.org;
+    # (Insert SSL config here)
+
+    location / {
+        proxy_pass http://HA_IP:9091;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**2. External Protected Service (e.g., `xc.raphaelchen.org`):**
+```nginx
+server {
+    listen 443 ssl;
+    server_name xc.raphaelchen.org;
+    # (Insert SSL config here)
+
+    location /internal/authelia/authz {
+        internal;
+        proxy_pass http://HA_IP:9091/api/verify;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $http_host;
+    }
+
+    location / {
+        auth_request /internal/authelia/authz;
+        # Redirect to the EXTERNAL portal
+        error_page 401 =302 [https://auth.raphaelchen.org/?rd=$scheme://$http_host$request_uri](https://auth.raphaelchen.org/?rd=$scheme://$http_host$request_uri);
+        
+        proxy_pass http://YOUR_EXTERNAL_BACKEND;
+    }
+}
+```
+
+#### B. Internal Tenant Configuration
+
+**1. Internal Auth Portal (`auth.local.raphaelchen.org`):**
+```nginx
+server {
+    listen 443 ssl;
+    server_name auth.local.raphaelchen.org;
+    # (Insert SSL config here)
+
+    location / {
+        proxy_pass http://HA_IP:9091;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**2. Internal Protected Service (`local.raphaelchen.org`):**
+```nginx
+server {
+    listen 443 ssl;
+    server_name local.raphaelchen.org;
+    # (Insert SSL config here)
+
+    location /internal/authelia/authz {
+        internal;
+        proxy_pass http://HA_IP:9091/api/verify;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $http_host;
+    }
+
+    location / {
+        auth_request /internal/authelia/authz;
+        # Redirect to the INTERNAL portal
+        error_page 401 =302 [https://auth.local.raphaelchen.org/?rd=$scheme://$http_host$request_uri](https://auth.local.raphaelchen.org/?rd=$scheme://$http_host$request_uri);
+        
+        proxy_pass http://YOUR_INTERNAL_BACKEND;
+    }
+}
+```
