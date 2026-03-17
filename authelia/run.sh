@@ -48,7 +48,6 @@ session:
       name: authelia_session
       expiration: 3600
       inactivity: 300
-      insecure: true  # 關鍵：這允許在測試階段透過 http (9091) 傳送 Cookie
 authentication_backend:
   file:
     path: /config/authelia/users_database.yml
