@@ -12,11 +12,13 @@ echo "[Info] Reading configuration from HA GUI..."
 DOMAIN=$(jq --raw-output '.domain' $OPTIONS_PATH)
 JWT_SECRET=$(jq --raw-output '.jwt_secret' $OPTIONS_PATH)
 SESSION_SECRET=$(jq --raw-output '.session_secret' $OPTIONS_PATH)
+ENCRYPTION_KEY=$(jq --raw-output '.encryption_key' $OPTIONS_PATH)
 
 # 2. 轉換為 Authelia v4.38+ 支援的新版環境變數
 export AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET="$JWT_SECRET"
 export AUTHELIA_SESSION_SECRET="$SESSION_SECRET"
 export AUTHELIA_SESSION_COOKIES_0_DOMAIN="$DOMAIN"
+export AUTHELIA_STORAGE_ENCRYPTION_KEY="$ENCRYPTION_KEY"
 
 # 3. 檢查並建立持久化目錄
 if [ ! -d "$CONFIG_DIR" ]; then
@@ -35,7 +37,6 @@ log:
   level: info
 default_2fa_method: "totp"
 storage:
-  encryption_key: "a_very_long_and_random_string_for_database_encryption_please_change"
   local:
     path: /config/authelia/db.sqlite3
 session:
