@@ -192,3 +192,79 @@ server {
     }
 }
 ```
+
+## NGINX Proxy Manager (NPM) Integration
+
+If you are using **NGINX Proxy Manager (NPM)**, you cannot modify the full `nginx.conf` or use standard `server` blocks, as NPM generates these automatically via its GUI. 
+
+To achieve the **Dual-Tenant Architecture** (automatically routing internal domains to the internal auth portal and external domains to the external auth portal) without breaking NPM's routing, you must use the **Advanced** tab.
+
+### Stage 1: Create the Auth Portals in NPM
+
+First, create two standard Proxy Hosts in NPM to act as your centralized authentication guards. You do not need any custom advanced configurations for these.
+
+**1. External Auth Portal**
+* **Domain Names:** `auth.YOUR_DOMAIN.com` (e.g., `auth.example.com`)
+* **Scheme:** `http`
+* **Forward Hostname / IP:** `YOUR_HA_IP` (e.g., `172.30.33.12` or `homeassistant`)
+* **Forward Port:** `9091`
+* **SSL:** Enable "Force SSL"
+
+**2. Internal Auth Portal**
+* **Domain Names:** `auth.local.YOUR_DOMAIN.com` (e.g., `auth.local.example.com`)
+* **Scheme:** `http`
+* **Forward Hostname / IP:** `YOUR_HA_IP`
+* **Forward Port:** `9091`
+* **SSL:** Enable "Force SSL"
+
+### Stage 2: Protect Your Services (The Advanced Tab)
+
+For any service you want to protect behind Authelia (e.g., `frigate.local.example.com` or `xc.example.com`), set up the Proxy Host normally in the NPM GUI (pointing to the real backend service). 
+
+Then, go to the **Advanced** tab of that Proxy Host and paste the following snippet into the `Custom Nginx Configuration` field:
+
+```nginx
+# =========================================================
+# 1. Dynamic Domain Extraction (Multi-Tenant Support)
+# Extracts the root/tenant domain for dynamic routing.
+# =========================================================
+set $tenant_domain "";
+if ($host ~* ^[^.]+\.(.+)$) {
+    set $tenant_domain $1;
+}
+
+# =========================================================
+# 2. Interception & Dynamic Routing
+# Placed at the server level to be inherited by NPM's location /
+# =========================================================
+auth_request /internal/authelia/authz;
+
+# Dynamically redirects to [https://auth.local.example.com](https://auth.local.example.com) or [https://auth.example.com](https://auth.example.com)
+error_page 401 =302 https://auth.$tenant_domain/?rd=$scheme://$http_host$request_uri;
+
+# Pass the authenticated user to the backend service
+auth_request_set $user $upstream_http_remote_user;
+proxy_set_header Remote-User $user;
+
+# =========================================================
+# 3. Internal Authelia Verification Endpoint
+# =========================================================
+location /internal/authelia/authz {
+    internal;
+    
+    # Replace with your Home Assistant IP or Docker hostname
+    proxy_pass http://homeassistant:9091/api/verify;
+    
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+    proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+**Why this works in NPM:**
+* **Perfect Inheritance:** We place the `auth_request` and `error_page` directives at the root of the custom configuration (Server level). NPM automatically inherits these rules into its auto-generated `location /` block.
+* **No `location /` Conflicts:** We do not manually declare `location /`, which prevents the dreaded "Duplicate location" error in NPM.
+* **Universal Snippet:** Thanks to the Regex domain extraction, you can paste this exact same snippet into *any* subdomain's Advanced tab without changing a single line of code!
