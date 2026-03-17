@@ -13,7 +13,7 @@ ports:
 ports_description:
   9091/tcp: "Authelia Web UI and API"
 options:
-  domain: "raphaelchen.org"
+  domain: "your-domain.com"
   jwt_secret: "請在此輸入隨機的JWT字串"
   session_secret: "請在此輸入隨機的Session字串"
   encryption_key: "請在此輸入用於資料庫加密的隨機字串"
