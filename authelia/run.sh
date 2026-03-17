@@ -55,4 +55,4 @@ EOF
 fi
 
 echo "[Info] Starting Authelia daemon..."
-exec authelia --config "$CONFIG_FILE"
+exec /app/authelia --config "$CONFIG_FILE"
