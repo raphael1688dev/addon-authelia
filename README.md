@@ -18,7 +18,7 @@ This add-on brings [Authelia](https://www.authelia.com/) (v4.38.0+) to Home Assi
 
 Navigate to the **Configuration** tab and fill in the following required fields before starting the add-on:
 
-* **`domain`**: Your root domain (e.g., `raphaelchen.org`).
+* **`domain`**: Your root domain (e.g., `example.com`).
 * **`jwt_secret`**: A unique, long random string for identity verification.
 * **`session_secret`**: A unique, long random string for session encryption.
 * **`encryption_key`**: A unique, long random string for database encryption (Mandatory in v4.38+).
@@ -45,7 +45,7 @@ users:
   raphael:
     displayname: "Raphael"
     password: "PASTE_YOUR_GENERATED_HASH_HERE"
-    email: admin@raphaelchen.org
+    email: admin@example.com
     groups:
       - admins
 ```
@@ -66,7 +66,7 @@ When you log in for the first time, Authelia will require you to register a 2FA 
 
 ## Advanced: Dual-Tenant Architecture (Internal vs. External Network Separation)
 
-If you are hosting both external services (e.g., `xc.raphaelchen.org`) and internal services (e.g., `local.raphaelchen.org`), routing internal traffic to an external auth portal is a security risk. Authelia's Multi-Domain capabilities allow you to split these into completely isolated authentication zones.
+If you are hosting both external services (e.g., `xc.example.com`) and internal services (e.g., `local.example.com`), routing internal traffic to an external auth portal is a security risk. Authelia's Multi-Domain capabilities allow you to split these into completely isolated authentication zones.
 
 ### 1. Authelia Configuration (`configuration.yml`)
 You must define separate cookies and access control policies for both environments in your `/config/authelia/configuration.yml`:
@@ -74,16 +74,16 @@ You must define separate cookies and access control policies for both environmen
 ```yaml
 session:
   cookies:
-    # External Network (Covers raphaelchen.org and xc.raphaelchen.org)
-    - domain: "raphaelchen.org"
-      authelia_url: "[https://auth.raphaelchen.org](https://auth.raphaelchen.org)"
+    # External Network (Covers example.com and xc.example.com)
+    - domain: "example.com"
+      authelia_url: "[https://auth.example.com](https://auth.example.com)"
       name: authelia_session_ext
       expiration: 3600
       inactivity: 300
 
-    # Internal Network (Strictly for local.raphaelchen.org)
-    - domain: "local.raphaelchen.org"
-      authelia_url: "[https://auth.local.raphaelchen.org](https://auth.local.raphaelchen.org)"
+    # Internal Network (Strictly for local.example.com)
+    - domain: "local.example.com"
+      authelia_url: "[https://auth.local.example.com](https://auth.local.example.com)"
       name: authelia_session_int
       expiration: 3600
       inactivity: 300
@@ -91,9 +91,9 @@ session:
 access_control:
   default_policy: deny
   rules:
-    - domain: "*.raphaelchen.org"
+    - domain: "*.example.com"
       policy: two_factor
-    - domain: "*.local.raphaelchen.org"
+    - domain: "*.local.example.com"
       policy: two_factor
 ```
 
@@ -103,11 +103,11 @@ You will need to configure separate Auth Portals and Service Blocks for both the
 
 #### A. External Tenant Configuration
 
-**1. External Auth Portal (`auth.raphaelchen.org`):**
+**1. External Auth Portal (`auth.example.com`):**
 ```nginx
 server {
     listen 443 ssl;
-    server_name auth.raphaelchen.org;
+    server_name auth.example.com;
     # (Insert SSL config here)
 
     location / {
@@ -120,11 +120,11 @@ server {
 }
 ```
 
-**2. External Protected Service (e.g., `xc.raphaelchen.org`):**
+**2. External Protected Service (e.g., `xc.example.com`):**
 ```nginx
 server {
     listen 443 ssl;
-    server_name xc.raphaelchen.org;
+    server_name xc.example.com;
     # (Insert SSL config here)
 
     location /internal/authelia/authz {
@@ -140,7 +140,7 @@ server {
     location / {
         auth_request /internal/authelia/authz;
         # Redirect to the EXTERNAL portal
-        error_page 401 =302 [https://auth.raphaelchen.org/?rd=$scheme://$http_host$request_uri](https://auth.raphaelchen.org/?rd=$scheme://$http_host$request_uri);
+        error_page 401 =302 [https://auth.example.com/?rd=$scheme://$http_host$request_uri](https://auth.example.com/?rd=$scheme://$http_host$request_uri);
         
         proxy_pass http://YOUR_EXTERNAL_BACKEND;
     }
@@ -149,11 +149,11 @@ server {
 
 #### B. Internal Tenant Configuration
 
-**1. Internal Auth Portal (`auth.local.raphaelchen.org`):**
+**1. Internal Auth Portal (`auth.local.example.com`):**
 ```nginx
 server {
     listen 443 ssl;
-    server_name auth.local.raphaelchen.org;
+    server_name auth.local.example.com;
     # (Insert SSL config here)
 
     location / {
@@ -166,11 +166,11 @@ server {
 }
 ```
 
-**2. Internal Protected Service (`local.raphaelchen.org`):**
+**2. Internal Protected Service (`local.example.com`):**
 ```nginx
 server {
     listen 443 ssl;
-    server_name local.raphaelchen.org;
+    server_name local.example.com;
     # (Insert SSL config here)
 
     location /internal/authelia/authz {
@@ -186,7 +186,7 @@ server {
     location / {
         auth_request /internal/authelia/authz;
         # Redirect to the INTERNAL portal
-        error_page 401 =302 [https://auth.local.raphaelchen.org/?rd=$scheme://$http_host$request_uri](https://auth.local.raphaelchen.org/?rd=$scheme://$http_host$request_uri);
+        error_page 401 =302 [https://auth.local.example.com/?rd=$scheme://$http_host$request_uri](https://auth.local.example.com/?rd=$scheme://$http_host$request_uri);
         
         proxy_pass http://YOUR_INTERNAL_BACKEND;
     }
