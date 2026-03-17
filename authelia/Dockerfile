@@ -1,5 +1,5 @@
-ARG BUILD_FROM=ghcr.io/authelia/authelia:latest
-FROM ${BUILD_FROM}
+# 直接寫死使用 Authelia 官方映像檔，防止 HA Supervisor 覆寫
+FROM ghcr.io/authelia/authelia:latest
 
 # 切換回 root 權限以執行初始化腳本與安裝套件
 USER root
